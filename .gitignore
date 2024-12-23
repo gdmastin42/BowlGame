@@ -1,0 +1,8 @@
+.env
+credentials.json
+answers.json
+results.json
+tblScore.db
+node_modules/
+index.html
+.vscode/

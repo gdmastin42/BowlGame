@@ -1,0 +1,17 @@
+{
+	"name": "bowl-games-project",
+	"version": "1.0.0",
+	"description": "A project to compare bowl game results with user predictions.",
+	"main": "cfb.js",
+	"author": "Garrett Mastin",
+	"license": "ISC",
+	"dependencies": {
+		"cfb.js": "^4.3.2",
+		"cors": "^2.8.5",
+		"dotenv": "^16.4.5",
+		"express": "^4.21.1",
+		"googleapis": "^144.0.0",
+		"http-server": "^14.1.1",
+		"sqlite3": "^5.1.7"
+	}
+}
