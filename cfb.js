@@ -164,93 +164,102 @@ FetchGames()
 async function  FetchPredictionResults() {
     try {
         
-        const resultsData = await fs.readFile('results.json', 'utf-8')
-        const result = JSON.parse(resultsData)
-
-        const answersData = await fs.readFile('answers.json', 'utf-8')
-        const answers = JSON.parse(answersData)
-        
-        let infoForUpdate = []
-        const titleWinner = 'Set Equal to Winner'
-
-        // Loops through each user
-        for (let currentUser = 0; currentUser < answers.length; currentUser++) {
-            
-            let totalPointsToPlayer = 0
-
-            if (answers[currentUser].userInfo.titleWinner == titleWinner) {
-                totalPointsToPlayer += 5
+        fs.readFile('results.json', 'utf-8', (err, resultsData) => {
+            if (err) {
+                console.error('Error reading results.json:', err)
+                return
             }
+            const result = JSON.parse(resultsData)
 
-            const gameDetails = answers[currentUser].gameDetails
-            const gameKeys = Object.keys(gameDetails)  
+        fs.readFile('answers.json', 'utf-8', async (err, answersData) => {
+            if (err) {
+                console.error('Error reading answers.json:', err)
+                return
+            }
+            const answers = JSON.parse(answersData)
+    
+                let infoForUpdate = []
+                const titleWinner = 'Set Equal to Winner'
 
-            // Loops through each bowl game
-            for (let currentUserChoice = 0; currentUserChoice < gameKeys.length; currentUserChoice++) {
-                
-                const gameKey = gameKeys[currentUserChoice]
-                const userPrediction = gameDetails[gameKey]
+                // Loops through each user
+                for (let currentUser = 0; currentUser < answers.length; currentUser++) {
+                    
+                    let totalPointsToPlayer = 0
 
-                let correctPrediction = false
-
-                // Loops through each game result
-                for (let currentGame = 0; currentGame < result.length; currentGame++) {
-
-                    //finds winner of the game
-                    if (result[currentGame].homePoints > result[currentGame].awayPoints) {
-                        winner = result[currentGame].homeTeam
-                    } else if (result[currentGame].homePoints < result[currentGame].awayPoints) {
-                        winner = result[currentGame].awayTeam
+                    if (answers[currentUser].userInfo.titleWinner == titleWinner) {
+                        totalPointsToPlayer += 5
                     }
 
-                    //checks if the user's prediction is correct
-                    if (winner === userPrediction) {
-                        correctPrediction = true
-                        break
+                    const gameDetails = answers[currentUser].gameDetails
+                    const gameKeys = Object.keys(gameDetails)  
+
+                    // Loops through each bowl game
+                    for (let currentUserChoice = 0; currentUserChoice < gameKeys.length; currentUserChoice++) {
+                        
+                        const gameKey = gameKeys[currentUserChoice]
+                        const userPrediction = gameDetails[gameKey]
+
+                        let correctPrediction = false
+
+                        // Loops through each game result
+                        for (let currentGame = 0; currentGame < result.length; currentGame++) {
+
+                            //finds winner of the game
+                            if (result[currentGame].homePoints > result[currentGame].awayPoints) {
+                                winner = result[currentGame].homeTeam
+                            } else if (result[currentGame].homePoints < result[currentGame].awayPoints) {
+                                winner = result[currentGame].awayTeam
+                            }
+
+                            //checks if the user's prediction is correct
+                            if (winner === userPrediction) {
+                                correctPrediction = true
+                                break
+                            }
+                        } 
+
+                        //adds points to the user if they predicted the winner correctly
+                        if (correctPrediction) {
+                            totalPointsToPlayer++
+                        }
                     }
-                } 
 
-                //adds points to the user if they predicted the winner correctly
-                if (correctPrediction) {
-                    totalPointsToPlayer++
-                }
-            }
-
-            //makes infoForUpdate an array of arrays with the first name, last name, and total points for each user
-            infoForUpdate.push([
-                answers[currentUser].userInfo.firstName,
-                answers[currentUser].userInfo.lastName,
-                totalPointsToPlayer
-            ])
-            
-            //updates the local SQLite database with the user's score if it already exists, otherwise it inserts the for the first time 
-            if (dbExists) {
-                db.run(`
-                    UPDATE tblScore 
-                    SET score = ?
-                    WHERE firstName = ? AND lastName = ?
-                    `,  
-                    totalPointsToPlayer, 
-                    answers[currentUser].userInfo.firstName, 
-                    answers[currentUser].userInfo.lastName
-                )
-                
-            } else {
-                db.run(
-                    'INSERT OR IGNORE INTO tblScore (timeStamp, firstName, lastName, score) VALUES (?, ?, ?, ?)',
-                    [
-                        answers[currentUser].userInfo.timeStamp,
+                    //makes infoForUpdate an array of arrays with the first name, last name, and total points for each user
+                    infoForUpdate.push([
                         answers[currentUser].userInfo.firstName,
                         answers[currentUser].userInfo.lastName,
                         totalPointsToPlayer
-                    ]
-                )
-            }
-        }
-
-        // updates the scores spreadsheet
-        await UpdateSheet(infoForUpdate)
-
+                    ])
+                    
+                    //updates the local SQLite database with the user's score if it already exists, otherwise it inserts the for the first time 
+                    if (dbExists) {
+                        db.run(`
+                            UPDATE tblScore 
+                            SET score = ?
+                            WHERE firstName = ? AND lastName = ?
+                            `,  
+                            totalPointsToPlayer, 
+                            answers[currentUser].userInfo.firstName, 
+                            answers[currentUser].userInfo.lastName
+                        )
+                        
+                    } else {
+                        db.run(
+                            'INSERT OR IGNORE INTO tblScore (timeStamp, firstName, lastName, score) VALUES (?, ?, ?, ?)',
+                            [
+                                answers[currentUser].userInfo.timeStamp,
+                                answers[currentUser].userInfo.firstName,
+                                answers[currentUser].userInfo.lastName,
+                                totalPointsToPlayer
+                            ]
+                        )
+                    }
+                }
+                
+                // updates the scores spreadsheet
+                await UpdateSheet(infoForUpdate)
+            })
+        })   
     } catch (error) {
         console.error('Error calulating results:', error.message)
     }
